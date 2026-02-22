@@ -299,8 +299,12 @@ function setLoad(p, msg) {
 // Assets are pre-cached in Docker — fetched from local server instantly
 setLoad(10, 'Loading BIOS from server...');
 
+// Track multiple file downloads
+const fileProgress = {};
+
 const emulator = new V86({
   screen_container: document.getElementById('screen_container'),
+  wasm_path: '/v86/v86.wasm',
   bios:     { url: '/v86/bios/seabios.bin' },
   vga_bios: { url: '/v86/bios/vgabios.bin' },
   hda: {
@@ -314,54 +318,49 @@ const emulator = new V86({
   acpi: true,
 });
 
-// Real progress from v86 download events
+// Real progress — track all files separately
 emulator.add_listener('download-progress', (e) => {
-  if (e.file_name && e.total) {
-    const p = 10 + Math.round((e.loaded / e.total) * 60);
-    const fileName = e.file_name.split('/').pop();
-    const mb = (e.loaded / 1024 / 1024).toFixed(1);
-    const total = (e.total / 1024 / 1024).toFixed(1);
-    setLoad(p, `Fetching ${fileName} — ${mb} / ${total} MB`);
+  const name = (e.file_name || '').split('/').pop() || 'asset';
+  if (e.total && e.total > 0) {
+    fileProgress[name] = { loaded: e.loaded, total: e.total };
   }
+  // Sum all known progress
+  const totalLoaded = Object.values(fileProgress).reduce((s,f) => s + f.loaded, 0);
+  const totalSize   = Object.values(fileProgress).reduce((s,f) => s + f.total, 0);
+  const p = totalSize > 0 ? Math.min(10 + Math.round((totalLoaded / totalSize) * 65), 75) : 10;
+  const mb = (e.loaded / 1024 / 1024).toFixed(1);
+  const tot = e.total > 0 ? (e.total / 1024 / 1024).toFixed(1) + ' MB' : '...';
+  setLoad(p, `Loading ${name} — ${mb} / ${tot}`);
 });
 
 emulator.add_listener('download-complete', (e) => {
-  const fileName = e.file_name ? e.file_name.split('/').pop() : 'asset';
-  setLoad(72, `Loaded ${fileName} ✓`);
-});
-
-// Boot stages via serial output
-let booted = false;
-emulator.add_listener('serial0-output-char', (char) => {
-  if (booted) return;
-  // Windows 95 boot stages visible in serial
-  setLoad(80, 'Kernel booting...');
+  const name = (e.file_name || '').split('/').pop() || 'asset';
+  setLoad(76, `✓ ${name} ready`);
 });
 
 emulator.add_listener('emulator-ready', () => {
-  setLoad(88, 'CPU initialized, starting Windows 95...');
+  setLoad(82, 'CPU initialized — booting kernel...');
 });
 
-// Watch screen for first paint = Windows is drawing
-let firstFrame = false;
-const canvas = document.querySelector('#screen_container canvas');
-const observer = new MutationObserver(() => {
-  if (!firstFrame && canvas.width > 0) {
-    firstFrame = true;
-    setLoad(95, 'Windows 95 rendering...');
-    observer.disconnect();
-  }
+let serialLines = '';
+emulator.add_listener('serial0-output-char', (char) => {
+  serialLines += char;
+  if (serialLines.length > 200) serialLines = serialLines.slice(-200);
+  if (serialLines.includes('Starting Windows')) setLoad(88, 'Starting Windows 95...');
+  else if (serialLines.includes('BIOS')) setLoad(84, 'BIOS initializing...');
 });
-observer.observe(canvas, { attributes: true });
 
 emulator.add_listener('screen-set-size-graphical', () => {
-  setLoad(100, 'Entering the void...');
+  setLoad(96, 'Windows 95 is rendering...');
   setTimeout(() => {
-    const loader = document.getElementById('loader');
-    loader.style.opacity = '0';
-    setTimeout(() => loader.style.display = 'none', 800);
-    document.getElementById('status-text').textContent = 'Windows 95 — Booting (~60s)';
-  }, 500);
+    setLoad(100, 'Entering the void...');
+    setTimeout(() => {
+      const loader = document.getElementById('loader');
+      loader.style.opacity = '0';
+      setTimeout(() => loader.style.display = 'none', 800);
+      document.getElementById('status-text').textContent = 'Windows 95 — Booting (~60s)';
+    }, 400);
+  }, 300);
 });
 
 // MIPS counter
