@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windows 95 Online</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #000;
+    font-family: 'Share Tech Mono', monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    cursor: default;
+  }
+
+  /* CRT scanline effect */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Loading screen */
+  #loader {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    z-index: 9998;
+    transition: opacity 1s;
+  }
+
+  #loader .win-logo {
+    font-family: 'VT323', monospace;
+    font-size: 48px;
+    color: #fff;
+    letter-spacing: 4px;
+  }
+
+  #loader .win-logo span { color: #00aaff; }
+
+  .loading-bar-wrap {
+    width: 300px;
+    height: 4px;
+    background: #111;
+    border: 1px solid #333;
+  }
+
+  .loading-bar {
+    height: 100%;
+    background: #00aaff;
+    width: 0;
+    transition: width 0.3s;
+    box-shadow: 0 0 10px #00aaff;
+  }
+
+  #loader p {
+    color: #555;
+    font-size: 11px;
+    letter-spacing: 2px;
+  }
+
+  /* Main emulator container */
+  #emulator-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #1a1a2e;
+  }
+
+  /* Top bar */
+  .topbar {
+    background: #0d0d1a;
+    border-bottom: 1px solid #1e1e3a;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .topbar-title {
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    color: #00aaff;
+    letter-spacing: 3px;
+  }
+
+  .topbar-status {
+    font-size: 10px;
+    color: #444;
+    letter-spacing: 2px;
+    display: flex;
+    gap: 16px;
+  }
+
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #00ff88; display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* v86 canvas container */
+  #screen_container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #screen_container canvas {
+    image-rendering: pixelated;
+    max-width: 100%;
+    max-height: 100%;
+    box-shadow: 0 0 40px rgba(0,170,255,0.15);
+  }
+
+  /* Bottom controls */
+  .controls {
+    background: #0d0d1a;
+    border-top: 1px solid #1e1e3a;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    padding: 5px 12px;
+    border: 1px solid #1e1e3a;
+    background: #111120;
+    color: #888;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: #00aaff; color: #00aaff; }
+  .btn:active { background: rgba(0,170,255,0.1); }
+
+  #status-text {
+    font-size: 10px;
+    color: #444;
+    letter-spacing: 1px;
+    margin-left: auto;
+  }
+
+  /* Fullscreen */
+  #screen_container:-webkit-full-screen { background: #000; }
+  #screen_container:-webkit-full-screen canvas { max-width: 100vw; max-height: 100vh; }
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div id="loader">
+  <div class="win-logo">WIN<span>95</span>.WEB</div>
+  <div class="loading-bar-wrap"><div class="loading-bar" id="load-bar"></div></div>
+  <p id="load-text">INITIALIZING...</p>
+</div>
+
+<!-- Main -->
+<div id="emulator-wrap">
+  <div class="topbar">
+    <div class="topbar-title">WIN95 // BROWSER EMULATOR</div>
+    <div class="topbar-status">
+      <span><span class="dot"></span>RUNNING</span>
+      <span id="mhz-display">0 MHz</span>
+    </div>
+  </div>
+
+  <div id="screen_container">
+    <canvas></canvas>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="sendCtrlAltDel()">CTRL+ALT+DEL</button>
+    <button class="btn" onclick="toggleFullscreen()">FULLSCREEN</button>
+    <button class="btn" onclick="emulator.restart()">RESTART</button>
+    <button class="btn" onclick="toggleMute()">🔇 MUTE</button>
+    <span id="status-text">BOOTING WINDOWS 95...</span>
+  </div>
+</div>
+
+<!-- v86 -->
+<script src="https://copy.sh/v86/build/libv86.js"></script>
+<script>
+// Loading animation
+let loadPct = 0;
+const loadBar = document.getElementById('load-bar');
+const loadText = document.getElementById('load-text');
+const loadMsgs = ['INITIALIZING CPU...','LOADING BIOS...','MOUNTING DISK...','STARTING WINDOWS 95...','LOADING DESKTOP...'];
+let msgIdx = 0;
+const loadInterval = setInterval(() => {
+  loadPct = Math.min(loadPct + Math.random() * 15, 90);
+  loadBar.style.width = loadPct + '%';
+  if (msgIdx < loadMsgs.length) loadText.textContent = loadMsgs[msgIdx++];
+}, 600);
+
+// Init v86 emulator with Windows 95 disk image
+const emulator = new V86({
+  screen_container: document.getElementById('screen_container'),
+  bios: { url: 'https://copy.sh/v86/bios/seabios.bin' },
+  vga_bios: { url: 'https://copy.sh/v86/bios/vgabios.bin' },
+  hda: {
+    url: 'https://copy.sh/v86/images/windows95.img',
+    size: 242 * 1024 * 1024,
+    async: true,
+  },
+  memory_size: 32 * 1024 * 1024,
+  vga_memory_size: 8 * 1024 * 1024,
+  autostart: true,
+  disable_mouse: false,
+  acpi: true,
+});
+
+emulator.add_listener('emulator-ready', () => {
+  clearInterval(loadInterval);
+  loadBar.style.width = '100%';
+  loadText.textContent = 'READY';
+  setTimeout(() => {
+    const loader = document.getElementById('loader');
+    loader.style.opacity = '0';
+    setTimeout(() => loader.style.display = 'none', 1000);
+  }, 500);
+});
+
+// MHz counter
+setInterval(() => {
+  if (emulator.is_running()) {
+    document.getElementById('mhz-display').textContent =
+      Math.round(emulator.get_instruction_counter() / 1e6) + ' MIPS';
+    emulator.reset_instruction_counter();
+    document.getElementById('status-text').textContent = 'WINDOWS 95 RUNNING';
+  }
+}, 1000);
+
+function sendCtrlAltDel() {
+  emulator.keyboard_send_scancodes([0x1D, 0x38, 0x53]); // ctrl+alt+del
+  setTimeout(() => emulator.keyboard_send_scancodes([0xD3, 0xB8, 0x9D]), 100);
+}
+
+function toggleFullscreen() {
+  const el = document.getElementById('screen_container');
+  if (!document.fullscreenElement) el.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+let muted = false;
+function toggleMute() {
+  muted = !muted;
+  // v86 doesn't expose mute directly but we can stop audio context
+}
+</script>
+</body>
+</html>
