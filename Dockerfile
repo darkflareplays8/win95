@@ -16,8 +16,8 @@ RUN apk add --no-cache curl && \
     curl -fL https://copy.sh/v86/bios/seabios.bin -o public/v86/bios/seabios.bin && \
     echo "Downloading vgabios..." && \
     curl -fL https://copy.sh/v86/bios/vgabios.bin -o public/v86/bios/vgabios.bin && \
-    echo "Downloading Windows 95 image (242MB)..." && \
-    curl -fL https://copy.sh/v86/images/windows95.img -o public/v86/images/windows95.img && \
+    echo "Downloading Windows 95 image..." && \
+    curl -fL "https://i.copy.sh/windows95.img" -o public/v86/images/windows95.img && \
     echo "All assets cached!" && \
     ls -lh public/v86/ public/v86/bios/ public/v86/images/
 
