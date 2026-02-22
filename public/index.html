@@ -282,63 +282,86 @@
   </div>
 </div>
 
-<script src="https://copy.sh/v86/build/libv86.js"></script>
+<script src="/v86/libv86.js"></script>
 <script>
-// ── Loading animation ─────────────────────────────────────────────────────
+// ── Loading ───────────────────────────────────────────────────────────────
 const bar = document.getElementById('load-bar');
 const pct = document.getElementById('load-pct');
 const statusEl = document.getElementById('load-status');
 
-const steps = [
-  [5,  'Awakening the void...'],
-  [12, 'Loading BIOS firmware...'],
-  [22, 'Initializing virtual CPU...'],
-  [35, 'Mounting disk image...'],
-  [45, 'Fetching Windows 95...'],
-  [58, 'Loading boot sector...'],
-  [70, 'Starting kernel...'],
-  [80, 'Initializing drivers...'],
-  [88, 'Loading desktop shell...'],
-  [94, 'Almost there...'],
-];
-
-let stepIdx = 0;
-const loadInterval = setInterval(() => {
-  if (stepIdx < steps.length) {
-    const [p, msg] = steps[stepIdx++];
-    bar.style.width = p + '%';
-    pct.textContent = p + '%';
-    statusEl.textContent = msg;
-  }
-}, 1200);
+function setLoad(p, msg) {
+  bar.style.width = p + '%';
+  pct.textContent = Math.round(p) + '%';
+  if (msg) statusEl.textContent = msg;
+}
 
 // ── v86 emulator ──────────────────────────────────────────────────────────
+// Assets are pre-cached in Docker — fetched from local server instantly
+setLoad(10, 'Loading BIOS from server...');
+
 const emulator = new V86({
   screen_container: document.getElementById('screen_container'),
-  bios:     { url: 'https://copy.sh/v86/bios/seabios.bin' },
-  vga_bios: { url: 'https://copy.sh/v86/bios/vgabios.bin' },
+  bios:     { url: '/v86/bios/seabios.bin' },
+  vga_bios: { url: '/v86/bios/vgabios.bin' },
   hda: {
-    url: 'https://copy.sh/v86/images/windows95.img',
+    url: '/v86/images/windows95.img',
     size: 242 * 1024 * 1024,
-    async: true,   // streams on demand — loads MUCH faster
+    async: true,
   },
-  memory_size:     32 * 1024 * 1024,
+  memory_size:     64 * 1024 * 1024,
   vga_memory_size:  8 * 1024 * 1024,
   autostart: true,
   acpi: true,
 });
 
+// Real progress from v86 download events
+emulator.add_listener('download-progress', (e) => {
+  if (e.file_name && e.total) {
+    const p = 10 + Math.round((e.loaded / e.total) * 60);
+    const fileName = e.file_name.split('/').pop();
+    const mb = (e.loaded / 1024 / 1024).toFixed(1);
+    const total = (e.total / 1024 / 1024).toFixed(1);
+    setLoad(p, `Fetching ${fileName} — ${mb} / ${total} MB`);
+  }
+});
+
+emulator.add_listener('download-complete', (e) => {
+  const fileName = e.file_name ? e.file_name.split('/').pop() : 'asset';
+  setLoad(72, `Loaded ${fileName} ✓`);
+});
+
+// Boot stages via serial output
+let booted = false;
+emulator.add_listener('serial0-output-char', (char) => {
+  if (booted) return;
+  // Windows 95 boot stages visible in serial
+  setLoad(80, 'Kernel booting...');
+});
+
 emulator.add_listener('emulator-ready', () => {
-  clearInterval(loadInterval);
-  bar.style.width = '100%';
-  pct.textContent = '100%';
-  statusEl.textContent = 'Entering the void...';
+  setLoad(88, 'CPU initialized, starting Windows 95...');
+});
+
+// Watch screen for first paint = Windows is drawing
+let firstFrame = false;
+const canvas = document.querySelector('#screen_container canvas');
+const observer = new MutationObserver(() => {
+  if (!firstFrame && canvas.width > 0) {
+    firstFrame = true;
+    setLoad(95, 'Windows 95 rendering...');
+    observer.disconnect();
+  }
+});
+observer.observe(canvas, { attributes: true });
+
+emulator.add_listener('screen-set-size-graphical', () => {
+  setLoad(100, 'Entering the void...');
   setTimeout(() => {
     const loader = document.getElementById('loader');
     loader.style.opacity = '0';
     setTimeout(() => loader.style.display = 'none', 800);
-    document.getElementById('status-text').textContent = 'Windows 95 — Booting (takes ~60s)';
-  }, 600);
+    document.getElementById('status-text').textContent = 'Windows 95 — Booting (~60s)';
+  }, 500);
 });
 
 // MIPS counter
@@ -364,4 +387,3 @@ function toggleFullscreen() {
 }
 </script>
 </body>
-</html>
