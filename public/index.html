@@ -288,11 +288,16 @@
 const bar = document.getElementById('load-bar');
 const pct = document.getElementById('load-pct');
 const statusEl = document.getElementById('load-status');
+const startTime = Date.now();
 
 function setLoad(p, msg) {
   bar.style.width = p + '%';
   pct.textContent = Math.round(p) + '%';
-  if (msg) statusEl.textContent = msg;
+  if (msg) {
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
+    const remaining = p > 5 ? Math.max(0, Math.round((100 - p) / p * elapsed)) : '?';
+    statusEl.textContent = msg + ` — ${elapsed}s elapsed, ~${remaining}s left`;
+  }
 }
 
 // ── v86 emulator ──────────────────────────────────────────────────────────
@@ -311,6 +316,7 @@ const emulator = new V86({
     url: '/v86/images/windows95.img',
     size: 242 * 1024 * 1024,
     async: true,
+    use_parts: false,
   },
   memory_size:     64 * 1024 * 1024,
   vga_memory_size:  8 * 1024 * 1024,
@@ -343,11 +349,17 @@ emulator.add_listener('emulator-ready', () => {
 });
 
 let serialLines = '';
+let lastSerialPct = 82;
 emulator.add_listener('serial0-output-char', (char) => {
   serialLines += char;
-  if (serialLines.length > 200) serialLines = serialLines.slice(-200);
-  if (serialLines.includes('Starting Windows')) setLoad(88, 'Starting Windows 95...');
-  else if (serialLines.includes('BIOS')) setLoad(84, 'BIOS initializing...');
+  if (serialLines.length > 500) serialLines = serialLines.slice(-500);
+  if (serialLines.includes('Starting Windows 95')) { lastSerialPct = 91; setLoad(91, 'Starting Windows 95 shell...'); }
+  else if (serialLines.includes('Starting Windows')) { lastSerialPct = 88; setLoad(88, 'Starting Windows...'); }
+  else if (serialLines.includes('HIMEM')) setLoad(Math.max(lastSerialPct, 83), 'Loading HIMEM memory manager...');
+  else if (serialLines.includes('MSCDEX')) setLoad(Math.max(lastSerialPct, 84), 'Loading CD-ROM driver...');
+  else if (serialLines.includes('SMARTDRV')) setLoad(Math.max(lastSerialPct, 85), 'Loading disk cache...');
+  else if (serialLines.includes('IFSHLP')) setLoad(Math.max(lastSerialPct, 86), 'Loading filesystem helper...');
+  else if (serialLines.includes('Loading device')) setLoad(Math.max(lastSerialPct, 87), 'Loading device drivers...');
 });
 
 emulator.add_listener('screen-set-size-graphical', () => {
