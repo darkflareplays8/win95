@@ -3,14 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Windows 95 Online</title>
-<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<title>VoidHub | Emulation</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --void: #07030f;
+    --deep: #0d0818;
+    --surface: #130d24;
+    --border: #2a1a4a;
+    --accent: #8b2fc9;
+    --accent2: #c044ff;
+    --glow: #d580ff;
+    --text: #c8b8e8;
+    --dim: #5a4a7a;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background: #000;
-    font-family: 'Share Tech Mono', monospace;
+    background: var(--void);
+    font-family: 'Rajdhani', sans-serif;
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -18,104 +30,153 @@
     cursor: default;
   }
 
-  /* CRT scanline effect */
+  /* Void noise texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.4;
+  }
+
+  /* CRT scanlines */
   body::after {
     content: '';
     position: fixed;
     inset: 0;
     background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.08) 2px,
-      rgba(0,0,0,0.08) 4px
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px
     );
     pointer-events: none;
     z-index: 9999;
   }
 
-  /* Loading screen */
+  /* ── LOADER ── */
   #loader {
     position: fixed;
     inset: 0;
-    background: #000;
+    background: var(--void);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 20px;
-    z-index: 9998;
-    transition: opacity 1s;
+    gap: 24px;
+    z-index: 9997;
+    transition: opacity 0.8s;
   }
 
-  #loader .win-logo {
+  .void-logo {
     font-family: 'VT323', monospace;
-    font-size: 48px;
-    color: #fff;
-    letter-spacing: 4px;
+    font-size: 52px;
+    letter-spacing: 6px;
+    background: linear-gradient(135deg, var(--accent2), var(--glow));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 20px rgba(192,68,255,0.5));
   }
 
-  #loader .win-logo span { color: #00aaff; }
-
-  .loading-bar-wrap {
-    width: 300px;
-    height: 4px;
-    background: #111;
-    border: 1px solid #333;
-  }
-
-  .loading-bar {
-    height: 100%;
-    background: #00aaff;
-    width: 0;
-    transition: width 0.3s;
-    box-shadow: 0 0 10px #00aaff;
-  }
-
-  #loader p {
-    color: #555;
+  .void-sub {
     font-size: 11px;
-    letter-spacing: 2px;
+    letter-spacing: 5px;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-top: -18px;
   }
 
-  /* Main emulator container */
-  #emulator-wrap {
+  .load-bar-wrap {
+    width: 320px;
+    height: 3px;
+    background: var(--surface);
+    border-radius: 2px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .load-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--glow));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+    box-shadow: 0 0 12px var(--accent2);
+  }
+
+  #load-status {
+    font-size: 12px;
+    color: var(--dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 20px;
+  }
+
+  .load-pct {
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    color: var(--accent2);
+  }
+
+  /* ── MAIN ── */
+  #app {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: #1a1a2e;
   }
 
-  /* Top bar */
-  .topbar {
-    background: #0d0d1a;
-    border-bottom: 1px solid #1e1e3a;
-    padding: 8px 16px;
+  /* Header */
+  .header {
+    background: var(--deep);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
   }
 
-  .topbar-title {
+  .header-logo {
     font-family: 'VT323', monospace;
-    font-size: 18px;
-    color: #00aaff;
+    font-size: 22px;
     letter-spacing: 3px;
+    background: linear-gradient(90deg, var(--accent2), var(--glow));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
-  .topbar-status {
-    font-size: 10px;
-    color: #444;
-    letter-spacing: 2px;
+  .header-right {
     display: flex;
-    gap: 16px;
+    align-items: center;
+    gap: 20px;
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
   }
 
-  .dot { width: 6px; height: 6px; border-radius: 50%; background: #00ff88; display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 10px;
+  }
+
+  .sdot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 6px var(--accent2);
+    animation: pulse 2s infinite;
+  }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-  /* v86 canvas container */
+  /* Screen */
   #screen_container {
     flex: 1;
     display: flex;
@@ -126,139 +187,173 @@
     overflow: hidden;
   }
 
+  #screen_container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(139,47,201,0.08) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
   #screen_container canvas {
     image-rendering: pixelated;
     max-width: 100%;
     max-height: 100%;
-    box-shadow: 0 0 40px rgba(0,170,255,0.15);
+    box-shadow:
+      0 0 0 1px var(--border),
+      0 0 60px rgba(139,47,201,0.2),
+      0 0 120px rgba(139,47,201,0.08);
+    position: relative;
+    z-index: 2;
   }
 
-  /* Bottom controls */
+  /* Controls */
   .controls {
-    background: #0d0d1a;
-    border-top: 1px solid #1e1e3a;
+    background: var(--deep);
+    border-top: 1px solid var(--border);
     padding: 8px 16px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     flex-shrink: 0;
     flex-wrap: wrap;
   }
 
   .btn {
-    padding: 5px 12px;
-    border: 1px solid #1e1e3a;
-    background: #111120;
-    color: #888;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
+    padding: 5px 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--dim);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
-    border-radius: 3px;
+    border-radius: 4px;
     letter-spacing: 1px;
+    text-transform: uppercase;
     transition: all 0.15s;
   }
-  .btn:hover { border-color: #00aaff; color: #00aaff; }
-  .btn:active { background: rgba(0,170,255,0.1); }
+  .btn:hover { border-color: var(--accent2); color: var(--accent2); box-shadow: 0 0 10px rgba(192,68,255,0.15); }
+  .btn:active { background: rgba(192,68,255,0.1); }
 
   #status-text {
-    font-size: 10px;
-    color: #444;
-    letter-spacing: 1px;
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 2px;
     margin-left: auto;
+    text-transform: uppercase;
   }
 
-  /* Fullscreen */
-  #screen_container:-webkit-full-screen { background: #000; }
-  #screen_container:-webkit-full-screen canvas { max-width: 100vw; max-height: 100vh; }
+  #mips-display {
+    font-family: 'VT323', monospace;
+    font-size: 16px;
+    color: var(--accent2);
+  }
 </style>
 </head>
 <body>
 
-<!-- Loading screen -->
 <div id="loader">
-  <div class="win-logo">WIN<span>95</span>.WEB</div>
-  <div class="loading-bar-wrap"><div class="loading-bar" id="load-bar"></div></div>
-  <p id="load-text">INITIALIZING...</p>
+  <div class="void-logo">VOIDHUB</div>
+  <div class="void-sub">Emulation Platform</div>
+  <div class="load-bar-wrap"><div class="load-bar" id="load-bar"></div></div>
+  <div class="load-pct" id="load-pct">0%</div>
+  <div id="load-status">Initializing void...</div>
 </div>
 
-<!-- Main -->
-<div id="emulator-wrap">
-  <div class="topbar">
-    <div class="topbar-title">WIN95 // BROWSER EMULATOR</div>
-    <div class="topbar-status">
-      <span><span class="dot"></span>RUNNING</span>
-      <span id="mhz-display">0 MHz</span>
+<div id="app">
+  <div class="header">
+    <div class="header-logo">VOIDHUB // EMULATION</div>
+    <div class="header-right">
+      <div class="status-pill"><span class="sdot"></span><span id="run-status">RUNNING</span></div>
+      <span id="mips-display">— MIPS</span>
     </div>
   </div>
 
-  <div id="screen_container">
-    <canvas></canvas>
-  </div>
+  <div id="screen_container"><canvas></canvas></div>
 
   <div class="controls">
-    <button class="btn" onclick="sendCtrlAltDel()">CTRL+ALT+DEL</button>
-    <button class="btn" onclick="toggleFullscreen()">FULLSCREEN</button>
-    <button class="btn" onclick="emulator.restart()">RESTART</button>
-    <button class="btn" onclick="toggleMute()">🔇 MUTE</button>
-    <span id="status-text">BOOTING WINDOWS 95...</span>
+    <button class="btn" onclick="sendCtrlAltDel()">Ctrl+Alt+Del</button>
+    <button class="btn" onclick="toggleFullscreen()">Fullscreen</button>
+    <button class="btn" onclick="emulator.restart()">Restart</button>
+    <button class="btn" onclick="emulator.save_state().then(s => console.log('saved'))">Save State</button>
+    <span id="status-text">Booting Windows 95...</span>
   </div>
 </div>
 
-<!-- v86 -->
 <script src="https://copy.sh/v86/build/libv86.js"></script>
 <script>
-// Loading animation
-let loadPct = 0;
-const loadBar = document.getElementById('load-bar');
-const loadText = document.getElementById('load-text');
-const loadMsgs = ['INITIALIZING CPU...','LOADING BIOS...','MOUNTING DISK...','STARTING WINDOWS 95...','LOADING DESKTOP...'];
-let msgIdx = 0;
-const loadInterval = setInterval(() => {
-  loadPct = Math.min(loadPct + Math.random() * 15, 90);
-  loadBar.style.width = loadPct + '%';
-  if (msgIdx < loadMsgs.length) loadText.textContent = loadMsgs[msgIdx++];
-}, 600);
+// ── Loading animation ─────────────────────────────────────────────────────
+const bar = document.getElementById('load-bar');
+const pct = document.getElementById('load-pct');
+const statusEl = document.getElementById('load-status');
 
-// Init v86 emulator with Windows 95 disk image
+const steps = [
+  [5,  'Awakening the void...'],
+  [12, 'Loading BIOS firmware...'],
+  [22, 'Initializing virtual CPU...'],
+  [35, 'Mounting disk image...'],
+  [45, 'Fetching Windows 95...'],
+  [58, 'Loading boot sector...'],
+  [70, 'Starting kernel...'],
+  [80, 'Initializing drivers...'],
+  [88, 'Loading desktop shell...'],
+  [94, 'Almost there...'],
+];
+
+let stepIdx = 0;
+const loadInterval = setInterval(() => {
+  if (stepIdx < steps.length) {
+    const [p, msg] = steps[stepIdx++];
+    bar.style.width = p + '%';
+    pct.textContent = p + '%';
+    statusEl.textContent = msg;
+  }
+}, 1200);
+
+// ── v86 emulator ──────────────────────────────────────────────────────────
 const emulator = new V86({
   screen_container: document.getElementById('screen_container'),
-  bios: { url: 'https://copy.sh/v86/bios/seabios.bin' },
+  bios:     { url: 'https://copy.sh/v86/bios/seabios.bin' },
   vga_bios: { url: 'https://copy.sh/v86/bios/vgabios.bin' },
   hda: {
     url: 'https://copy.sh/v86/images/windows95.img',
     size: 242 * 1024 * 1024,
-    async: true,
+    async: true,   // streams on demand — loads MUCH faster
   },
-  memory_size: 32 * 1024 * 1024,
-  vga_memory_size: 8 * 1024 * 1024,
+  memory_size:     32 * 1024 * 1024,
+  vga_memory_size:  8 * 1024 * 1024,
   autostart: true,
-  disable_mouse: false,
   acpi: true,
 });
 
 emulator.add_listener('emulator-ready', () => {
   clearInterval(loadInterval);
-  loadBar.style.width = '100%';
-  loadText.textContent = 'READY';
+  bar.style.width = '100%';
+  pct.textContent = '100%';
+  statusEl.textContent = 'Entering the void...';
   setTimeout(() => {
     const loader = document.getElementById('loader');
     loader.style.opacity = '0';
-    setTimeout(() => loader.style.display = 'none', 1000);
-  }, 500);
+    setTimeout(() => loader.style.display = 'none', 800);
+    document.getElementById('status-text').textContent = 'Windows 95 — Booting (takes ~60s)';
+  }, 600);
 });
 
-// MHz counter
+// MIPS counter
 setInterval(() => {
   if (emulator.is_running()) {
-    document.getElementById('mhz-display').textContent =
+    document.getElementById('mips-display').textContent =
       Math.round(emulator.get_instruction_counter() / 1e6) + ' MIPS';
     emulator.reset_instruction_counter();
-    document.getElementById('status-text').textContent = 'WINDOWS 95 RUNNING';
+    document.getElementById('status-text').textContent = 'Windows 95 — Running';
+    document.getElementById('run-status').textContent = 'ONLINE';
   }
 }, 1000);
 
 function sendCtrlAltDel() {
-  emulator.keyboard_send_scancodes([0x1D, 0x38, 0x53]); // ctrl+alt+del
+  emulator.keyboard_send_scancodes([0x1D, 0x38, 0x53]);
   setTimeout(() => emulator.keyboard_send_scancodes([0xD3, 0xB8, 0x9D]), 100);
 }
 
@@ -266,12 +361,6 @@ function toggleFullscreen() {
   const el = document.getElementById('screen_container');
   if (!document.fullscreenElement) el.requestFullscreen();
   else document.exitFullscreen();
-}
-
-let muted = false;
-function toggleMute() {
-  muted = !muted;
-  // v86 doesn't expose mute directly but we can stop audio context
 }
 </script>
 </body>
