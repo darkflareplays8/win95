@@ -335,6 +335,20 @@ const emulator = new V86({
   autostart: true,
   acpi: true,
   disable_audio: true,
+  mouse_sens: 0.5,
+});
+
+// Lock mouse on canvas click for accurate input
+const canvas = document.querySelector('#screen_container canvas');
+canvas.addEventListener('click', () => {
+  canvas.requestPointerLock();
+});
+
+document.addEventListener('pointerlockchange', () => {
+  const locked = document.pointerLockElement === canvas;
+  document.getElementById('status-text').textContent = locked 
+    ? 'Mouse locked — Press ESC to unlock' 
+    : 'KolibriOS — Click screen to lock mouse';
 });
 
 // Real progress — track all files separately
