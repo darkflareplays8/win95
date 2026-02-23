@@ -429,14 +429,14 @@ emulator.add_listener('emulator-ready', () => {
   }, 200);
 });
 
-// Show skip button after 30s
+// Show skip button after 5s
 setTimeout(() => {
   const btn = document.getElementById('skip-btn');
   if (btn) btn.style.display = 'block';
-}, 30000);
+}, 5000);
 
-// Force hide after 2 mins absolute max
-setTimeout(hideLoader, 120000);
+// Force hide after 10s — KolibriOS boots fast
+setTimeout(hideLoader, 10000);
 
 let serialLines = '';
 let lastSerialPct = 82;
