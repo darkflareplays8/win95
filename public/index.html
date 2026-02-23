@@ -289,7 +289,7 @@
     <button class="btn" onclick="toggleFullscreen()">Fullscreen</button>
     <button class="btn" onclick="emulator.restart()">Restart</button>
     <button class="btn" onclick="emulator.save_state().then(s => console.log('saved'))">Save State</button>
-    <span id="status-text">Booting Windows 95...</span>
+    <span id="status-text">Booting Windows 98...</span>
   </div>
 </div>
 
@@ -324,8 +324,8 @@ const emulator = new V86({
   bios:     { url: '/v86/bios/seabios.bin' },
   vga_bios: { url: '/v86/bios/vgabios.bin' },
   hda: {
-    url: 'https://copy.sh/v86/images/windows95.img',
-    size: 242 * 1024 * 1024,
+    url: 'https://i.copy.sh/windows98.img',
+    size: 300 * 1024 * 1024,
     async: true,
   },
   memory_size:     64 * 1024 * 1024,
@@ -362,7 +362,7 @@ function hideLoader() {
   loader.style.opacity = '0';
   setTimeout(() => {
     loader.style.display = 'none';
-    document.getElementById('status-text').textContent = 'Windows 95 — Running';
+    document.getElementById('status-text').textContent = 'Windows 98 — Running';
   }, 600);
 }
 
@@ -371,7 +371,7 @@ emulator.add_listener('emulator-ready', () => {
   let crawl = 50;
   const msgs = [
     [55, 'Loading DOS kernel...'],
-    [65, 'Starting Windows 95...'],
+    [65, 'Starting Windows 98...'],
     [75, 'Loading desktop shell...'],
     [85, 'Initializing Explorer...'],
     [95, 'Almost ready...'],
@@ -409,7 +409,7 @@ let lastSerialPct = 82;
 emulator.add_listener('serial0-output-char', (char) => {
   serialLines += char;
   if (serialLines.length > 500) serialLines = serialLines.slice(-500);
-  if (serialLines.includes('Starting Windows 95')) { lastSerialPct = 91; setLoad(91, 'Starting Windows 95 shell...'); }
+  if (serialLines.includes('Starting Windows 98')) { lastSerialPct = 91; setLoad(91, 'Starting Windows 98 shell...'); }
   else if (serialLines.includes('Starting Windows')) { lastSerialPct = 88; setLoad(88, 'Starting Windows...'); }
   else if (serialLines.includes('HIMEM')) setLoad(Math.max(lastSerialPct, 83), 'Loading HIMEM memory manager...');
   else if (serialLines.includes('MSCDEX')) setLoad(Math.max(lastSerialPct, 84), 'Loading CD-ROM driver...');
@@ -426,7 +426,7 @@ setInterval(() => {
     document.getElementById('mips-display').textContent =
       Math.round(emulator.get_instruction_counter() / 1e6) + ' MIPS';
     emulator.reset_instruction_counter();
-    document.getElementById('status-text').textContent = 'Windows 95 — Running';
+    document.getElementById('status-text').textContent = 'Windows 98 — Running';
     document.getElementById('run-status').textContent = 'ONLINE';
   }
 }, 1000);
