@@ -265,6 +265,12 @@
   <div class="load-bar-wrap"><div class="load-bar" id="load-bar"></div></div>
   <div class="load-pct" id="load-pct">0%</div>
   <div id="load-status">Initializing void...</div>
+  <button id="skip-btn" onclick="hideLoader()" style="
+    display:none; margin-top:8px; background:none; border:1px solid #2a1a4a;
+    color:#5a4a7a; padding:6px 20px; font-family:'Rajdhani',sans-serif;
+    font-size:12px; letter-spacing:2px; cursor:pointer; border-radius:4px;
+    text-transform:uppercase;
+  ">Skip → Enter Anyway</button>
 </div>
 
 <div id="app">
@@ -348,39 +354,55 @@ emulator.add_listener('download-complete', (e) => {
   setLoad(76, `✓ ${name} ready`);
 });
 
+function hideLoader() {
+  clearInterval(window._crawlInterval);
+  const loader = document.getElementById('loader');
+  if (loader.style.display === 'none') return;
+  setLoad(100, 'Entering the void...');
+  loader.style.opacity = '0';
+  setTimeout(() => {
+    loader.style.display = 'none';
+    document.getElementById('status-text').textContent = 'Windows 95 — Running';
+  }, 600);
+}
+
 emulator.add_listener('emulator-ready', () => {
-  setLoad(50, 'CPU ready — waiting for Windows...');
-  // Crawl slowly from 50 to 90 while Windows actually boots
+  setLoad(50, 'CPU ready — Windows booting...');
   let crawl = 50;
-  const crawlInterval = setInterval(() => {
-    if (crawl < 90) {
-      crawl += 0.15;
-      bar.style.width = crawl + '%';
-      pct.textContent = Math.round(crawl) + '%';
-      const elapsed = Math.round((Date.now() - startTime) / 1000);
-      if (crawl < 60) statusEl.textContent = `Loading DOS kernel... — ${elapsed}s elapsed`;
-      else if (crawl < 70) statusEl.textContent = `Starting Windows 95... — ${elapsed}s elapsed`;
-      else if (crawl < 80) statusEl.textContent = `Loading desktop shell... — ${elapsed}s elapsed`;
-      else statusEl.textContent = `Almost there... — ${elapsed}s elapsed`;
+  const msgs = [
+    [55, 'Loading DOS kernel...'],
+    [65, 'Starting Windows 95...'],
+    [75, 'Loading desktop shell...'],
+    [85, 'Initializing Explorer...'],
+    [95, 'Almost ready...'],
+  ];
+  let msgI = 0;
+
+  window._crawlInterval = setInterval(() => {
+    crawl += 0.08; // never stops — keeps going past 95 slowly
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    bar.style.width = Math.min(crawl, 99) + '%';
+    pct.textContent = Math.min(Math.round(crawl), 99) + '%';
+    if (msgI < msgs.length && crawl >= msgs[msgI][0]) {
+      statusEl.textContent = msgs[msgI][1] + ` — ${elapsed}s`;
+      msgI++;
     } else {
-      clearInterval(crawlInterval);
+      // Update elapsed every tick
+      if (statusEl.textContent.includes('—')) {
+        statusEl.textContent = statusEl.textContent.replace(/— \d+s/, `— ${elapsed}s`);
+      }
     }
   }, 200);
-  // Store interval so screen-set-size can clear it
-  window._crawlInterval = crawlInterval;
-
-  // Fallback: force show screen after 90s no matter what
-  setTimeout(() => {
-    clearInterval(window._crawlInterval);
-    const loader = document.getElementById('loader');
-    if (loader.style.display !== 'none') {
-      setLoad(100, 'Loading complete — showing screen');
-      loader.style.opacity = '0';
-      setTimeout(() => loader.style.display = 'none', 600);
-      document.getElementById('status-text').textContent = 'Windows 95 — Running';
-    }
-  }, 90000);
 });
+
+// Show skip button after 30s
+setTimeout(() => {
+  const btn = document.getElementById('skip-btn');
+  if (btn) btn.style.display = 'block';
+}, 30000);
+
+// Force hide after 2 mins absolute max
+setTimeout(hideLoader, 120000);
 
 let serialLines = '';
 let lastSerialPct = 82;
@@ -396,16 +418,7 @@ emulator.add_listener('serial0-output-char', (char) => {
   else if (serialLines.includes('Loading device')) setLoad(Math.max(lastSerialPct, 87), 'Loading device drivers...');
 });
 
-emulator.add_listener('screen-set-size-graphical', () => {
-  clearInterval(window._crawlInterval);
-  setLoad(100, 'Entering the void...');
-  const loader = document.getElementById('loader');
-  loader.style.opacity = '0';
-  setTimeout(() => {
-    loader.style.display = 'none';
-    document.getElementById('status-text').textContent = 'Windows 95 — Running';
-  }, 600);
-});
+emulator.add_listener('screen-set-size-graphical', hideLoader);
 
 // MIPS counter
 setInterval(() => {
