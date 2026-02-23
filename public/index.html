@@ -335,17 +335,22 @@ const emulator = new V86({
   autostart: true,
   acpi: true,
   disable_audio: true,
-  mouse_sens: 0.5,
+  mouse_sens: 0.2,
 });
 
 // Lock mouse on canvas click for accurate input
 const canvas = document.querySelector('#screen_container canvas');
+
 canvas.addEventListener('click', () => {
   canvas.requestPointerLock();
 });
 
+// Hide cursor on canvas when not locked
+canvas.style.cursor = 'none';
+
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
+  canvas.style.cursor = locked ? 'none' : 'none';
   document.getElementById('status-text').textContent = locked 
     ? 'Mouse locked — Press ESC to unlock' 
     : 'KolibriOS — Click screen to lock mouse';
