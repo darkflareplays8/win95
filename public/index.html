@@ -105,12 +105,17 @@
   }
 
   #load-status {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--dim);
-    letter-spacing: 3px;
+    letter-spacing: 1px;
     text-transform: uppercase;
     font-family: 'Rajdhani', sans-serif;
     min-height: 20px;
+    max-width: 320px;
+    text-align: center;
+    padding: 0 16px;
+    line-height: 1.4;
+    word-break: break-word;
   }
 
   .load-pct {
@@ -313,10 +318,9 @@ const emulator = new V86({
   bios:     { url: '/v86/bios/seabios.bin' },
   vga_bios: { url: '/v86/bios/vgabios.bin' },
   hda: {
-    url: '/v86/images/windows95.img',
+    url: 'https://copy.sh/v86/images/windows95.img',
     size: 242 * 1024 * 1024,
     async: true,
-    use_parts: false,
   },
   memory_size:     64 * 1024 * 1024,
   vga_memory_size:  8 * 1024 * 1024,
