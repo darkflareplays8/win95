@@ -325,13 +325,14 @@ const emulator = new V86({
   vga_bios: { url: '/v86/bios/vgabios.bin' },
   hda: {
     url: '/v86/images/windows98.img',
-    size: 500 * 1024 * 1024,
+    size: 686 * 1024 * 1024,
     async: true,
   },
   memory_size:     64 * 1024 * 1024,
   vga_memory_size:  8 * 1024 * 1024,
   autostart: true,
   acpi: true,
+  disable_audio: true,
 });
 
 // Real progress — track all files separately
@@ -423,9 +424,11 @@ emulator.add_listener('screen-set-size-graphical', hideLoader);
 // MIPS counter
 setInterval(() => {
   if (emulator.is_running()) {
-    document.getElementById('mips-display').textContent =
-      Math.round(emulator.get_instruction_counter() / 1e6) + ' MIPS';
-    emulator.reset_instruction_counter();
+    try {
+      const ips = emulator.get_instructions_per_second();
+      document.getElementById('mips-display').textContent =
+        Math.round(ips / 1e6) + ' MIPS';
+    } catch(e) {}
     document.getElementById('status-text').textContent = 'Windows 98 — Running';
     document.getElementById('run-status').textContent = 'ONLINE';
   }
