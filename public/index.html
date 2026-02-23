@@ -289,7 +289,7 @@
     <button class="btn" onclick="toggleFullscreen()">Fullscreen</button>
     <button class="btn" onclick="emulator.restart()">Restart</button>
     <button class="btn" onclick="emulator.save_state().then(s => console.log('saved'))">Save State</button>
-    <span id="status-text">Booting MS-DOS...</span>
+    <span id="status-text">Booting KolibriOS...</span>
   </div>
 </div>
 
@@ -329,6 +329,7 @@ const emulator = new V86({
     async: false,
   },
   boot_order: 0x321,
+  vga_memory_size: 8 * 1024 * 1024,
   memory_size:     64 * 1024 * 1024,
   vga_memory_size:  8 * 1024 * 1024,
   autostart: true,
@@ -364,7 +365,7 @@ function hideLoader() {
   loader.style.opacity = '0';
   setTimeout(() => {
     loader.style.display = 'none';
-    document.getElementById('status-text').textContent = 'MS-DOS — Running';
+    document.getElementById('status-text').textContent = 'KolibriOS — Running';
   }, 600);
 }
 
@@ -373,7 +374,7 @@ emulator.add_listener('emulator-ready', () => {
   let crawl = 50;
   const msgs = [
     [55, 'Loading DOS kernel...'],
-    [65, 'Starting MS-DOS...'],
+    [65, 'Starting KolibriOS...'],
     [75, 'Loading desktop shell...'],
     [85, 'Initializing Explorer...'],
     [95, 'Almost ready...'],
@@ -411,7 +412,7 @@ let lastSerialPct = 82;
 emulator.add_listener('serial0-output-char', (char) => {
   serialLines += char;
   if (serialLines.length > 500) serialLines = serialLines.slice(-500);
-  if (serialLines.includes('Starting MS-DOS')) { lastSerialPct = 91; setLoad(91, 'Starting MS-DOS shell...'); }
+  if (serialLines.includes('Starting KolibriOS')) { lastSerialPct = 91; setLoad(91, 'Starting KolibriOS shell...'); }
   else if (serialLines.includes('Starting Windows')) { lastSerialPct = 88; setLoad(88, 'Starting Windows...'); }
   else if (serialLines.includes('HIMEM')) setLoad(Math.max(lastSerialPct, 83), 'Loading HIMEM memory manager...');
   else if (serialLines.includes('MSCDEX')) setLoad(Math.max(lastSerialPct, 84), 'Loading CD-ROM driver...');
@@ -430,7 +431,7 @@ setInterval(() => {
       document.getElementById('mips-display').textContent =
         Math.round(ips / 1e6) + ' MIPS';
     } catch(e) {}
-    document.getElementById('status-text').textContent = 'MS-DOS — Running';
+    document.getElementById('status-text').textContent = 'KolibriOS — Running';
     document.getElementById('run-status').textContent = 'ONLINE';
   }
 }, 1000);
