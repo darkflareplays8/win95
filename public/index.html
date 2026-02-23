@@ -323,11 +323,12 @@ const emulator = new V86({
   wasm_path: '/v86/v86.wasm',
   bios:     { url: '/v86/bios/seabios.bin' },
   vga_bios: { url: '/v86/bios/vgabios.bin' },
-  hda: {
+  fda: {
     url: '/v86/images/os.img',
-    size: 8 * 1024 * 1024,
+    size: 1474560,
     async: false,
   },
+  boot_order: 0x321,
   memory_size:     64 * 1024 * 1024,
   vga_memory_size:  8 * 1024 * 1024,
   autostart: true,
