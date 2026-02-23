@@ -344,29 +344,97 @@ canvas.style.cursor = 'none';
 
 let mouseX = 0, mouseY = 0;
 const SENS = 0.1;
+const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
-canvas.addEventListener('click', () => canvas.requestPointerLock());
+// Desktop: pointer lock
+if (!isMobileDevice) {
+  canvas.addEventListener('click', () => canvas.requestPointerLock());
 
-document.addEventListener('pointerlockchange', () => {
-  const locked = document.pointerLockElement === canvas;
-  document.getElementById('status-text').textContent = locked
-    ? 'Mouse locked — Press ESC to unlock'
-    : 'KolibriOS — Click screen to lock mouse';
-  if (locked) {
-    // Reset to center on lock
-    mouseX = canvas.width / 2;
-    mouseY = canvas.height / 2;
+  document.addEventListener('pointerlockchange', () => {
+    const locked = document.pointerLockElement === canvas;
+    document.getElementById('status-text').textContent = locked
+      ? 'Mouse locked — Press ESC to unlock'
+      : 'KolibriOS — Click screen to lock mouse';
+    if (locked) {
+      mouseX = canvas.width / 2;
+      mouseY = canvas.height / 2;
+    }
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (document.pointerLockElement !== canvas) return;
+    mouseX = Math.max(0, Math.min(canvas.width,  mouseX + e.movementX * SENS));
+    mouseY = Math.max(0, Math.min(canvas.height, mouseY + e.movementY * SENS));
+    emulator.mouse_set_position(Math.round(mouseX), Math.round(mouseY));
+  }, { passive: true });
+}
+
+// Mobile: touchscreen support
+if (isMobileDevice) {
+  canvas.style.touchAction = 'none';
+
+  function getTouchPos(touch) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: Math.round((touch.clientX - rect.left) * scaleX),
+      y: Math.round((touch.clientY - rect.top) * scaleY),
+    };
   }
-});
 
-// Smooth mouse movement with lerp
-document.addEventListener('mousemove', (e) => {
-  if (document.pointerLockElement !== canvas) return;
-  // Apply sensitivity and smoothing
-  mouseX = Math.max(0, Math.min(canvas.width,  mouseX + e.movementX * SENS));
-  mouseY = Math.max(0, Math.min(canvas.height, mouseY + e.movementY * SENS));
-  emulator.mouse_set_position(Math.round(mouseX), Math.round(mouseY));
-}, { passive: true });
+  let lastTouch = null;
+  let tapTimer = null;
+  let isDragging = false;
+
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const pos = getTouchPos(e.touches[0]);
+    lastTouch = pos;
+    isDragging = false;
+
+    // Set position immediately
+    emulator.mouse_set_position(pos.x, pos.y);
+
+    // Tap = left click after short delay
+    tapTimer = setTimeout(() => {
+      if (!isDragging) {
+        emulator.mouse_set_position(pos.x, pos.y);
+        emulator.mouse_button_down(0);
+        setTimeout(() => emulator.mouse_button_up(0), 80);
+      }
+    }, 100);
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const pos = getTouchPos(e.touches[0]);
+    isDragging = true;
+    emulator.mouse_set_position(pos.x, pos.y);
+    lastTouch = pos;
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    clearTimeout(tapTimer);
+    if (isDragging && lastTouch) {
+      emulator.mouse_button_up(0);
+    }
+  }, { passive: false });
+
+  // Two finger tap = right click
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const pos = getTouchPos(e.touches[0]);
+      emulator.mouse_set_position(pos.x, pos.y);
+      emulator.mouse_button_down(2);
+      setTimeout(() => emulator.mouse_button_up(2), 80);
+    }
+  }, { passive: false });
+
+  document.getElementById('status-text').textContent = 'Tap to click • 2 fingers = right click';
+}
 
 // Real progress — track all files separately
 emulator.add_listener('download-progress', (e) => {
@@ -429,14 +497,14 @@ emulator.add_listener('emulator-ready', () => {
   }, 200);
 });
 
-// Show skip button after 5s
+// Show skip button after 30s
 setTimeout(() => {
   const btn = document.getElementById('skip-btn');
   if (btn) btn.style.display = 'block';
-}, 5000);
+}, 30000);
 
-// Force hide after 10s — KolibriOS boots fast
-setTimeout(hideLoader, 10000);
+// Force hide after 2 mins absolute max
+setTimeout(hideLoader, 120000);
 
 let serialLines = '';
 let lastSerialPct = 82;
@@ -476,6 +544,44 @@ function toggleFullscreen() {
   const el = document.getElementById('screen_container');
   if (!document.fullscreenElement) el.requestFullscreen();
   else document.exitFullscreen();
+}
+
+function sendKey(scancode) {
+  emulator.keyboard_send_scancodes([scancode]);
+  setTimeout(() => emulator.keyboard_send_scancodes([scancode | 0x80]), 100);
+}
+
+// Mobile keyboard — show hidden input and focus it
+let kbdInput = null;
+function toggleKeyboard() {
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  if (!isMobile) {
+    // On desktop just focus the canvas
+    canvas.focus();
+    return;
+  }
+  if (!kbdInput) {
+    kbdInput = document.createElement('input');
+    kbdInput.style.cssText = 'position:fixed;bottom:0;left:0;width:100%;opacity:0;height:1px;z-index:9999;font-size:16px;';
+    kbdInput.setAttribute('autocomplete', 'off');
+    kbdInput.setAttribute('autocorrect', 'off');
+    kbdInput.setAttribute('autocapitalize', 'off');
+    kbdInput.setAttribute('spellcheck', 'false');
+    document.body.appendChild(kbdInput);
+    kbdInput.addEventListener('input', (e) => {
+      const val = e.data || '';
+      for (const char of val) {
+        emulator.keyboard_send_text(char);
+      }
+      kbdInput.value = '';
+    });
+    kbdInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace') sendKey(0x0E);
+      if (e.key === 'Enter') sendKey(0x1C);
+      if (e.key === 'Escape') sendKey(0x01);
+    });
+  }
+  kbdInput.focus();
 }
 </script>
 </body>
