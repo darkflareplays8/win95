@@ -335,26 +335,38 @@ const emulator = new V86({
   autostart: true,
   acpi: true,
   disable_audio: true,
-  mouse_sens: 0.2,
+  mouse_sens: 0.1,
 });
 
-// Lock mouse on canvas click for accurate input
+// Smooth mouse handling with pointer lock
 const canvas = document.querySelector('#screen_container canvas');
-
-canvas.addEventListener('click', () => {
-  canvas.requestPointerLock();
-});
-
-// Hide cursor on canvas when not locked
 canvas.style.cursor = 'none';
+
+let mouseX = 0, mouseY = 0;
+const SENS = 0.1;
+
+canvas.addEventListener('click', () => canvas.requestPointerLock());
 
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
-  canvas.style.cursor = locked ? 'none' : 'none';
-  document.getElementById('status-text').textContent = locked 
-    ? 'Mouse locked — Press ESC to unlock' 
+  document.getElementById('status-text').textContent = locked
+    ? 'Mouse locked — Press ESC to unlock'
     : 'KolibriOS — Click screen to lock mouse';
+  if (locked) {
+    // Reset to center on lock
+    mouseX = canvas.width / 2;
+    mouseY = canvas.height / 2;
+  }
 });
+
+// Smooth mouse movement with lerp
+document.addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement !== canvas) return;
+  // Apply sensitivity and smoothing
+  mouseX = Math.max(0, Math.min(canvas.width,  mouseX + e.movementX * SENS));
+  mouseY = Math.max(0, Math.min(canvas.height, mouseY + e.movementY * SENS));
+  emulator.mouse_set_position(Math.round(mouseX), Math.round(mouseY));
+}, { passive: true });
 
 // Real progress — track all files separately
 emulator.add_listener('download-progress', (e) => {
