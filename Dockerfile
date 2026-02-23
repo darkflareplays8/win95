@@ -11,8 +11,8 @@ RUN apk add --no-cache curl && \
     curl -fL https://copy.sh/v86/build/v86.wasm -o public/v86/v86.wasm && \
     curl -fL https://copy.sh/v86/bios/seabios.bin -o public/v86/bios/seabios.bin && \
     curl -fL https://copy.sh/v86/bios/vgabios.bin -o public/v86/bios/vgabios.bin && \
-    echo "Downloading MS-DOS 6.22 image..." && \
-    curl --compressed -fL "https://i.copy.sh/msdos622.img" -o public/v86/images/os.img && \
+    echo "Downloading MS-DOS image from GitHub..." && \
+    curl -fL "https://github.com/copy/images/raw/master/msdos.img" -o public/v86/images/os.img && \
     echo "Done!" && ls -lh public/v86/images/
 
 EXPOSE 3000
