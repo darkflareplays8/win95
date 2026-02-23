@@ -349,7 +349,25 @@ emulator.add_listener('download-complete', (e) => {
 });
 
 emulator.add_listener('emulator-ready', () => {
-  setLoad(82, 'CPU initialized — booting kernel...');
+  setLoad(50, 'CPU ready — waiting for Windows...');
+  // Crawl slowly from 50 to 90 while Windows actually boots
+  let crawl = 50;
+  const crawlInterval = setInterval(() => {
+    if (crawl < 90) {
+      crawl += 0.15;
+      bar.style.width = crawl + '%';
+      pct.textContent = Math.round(crawl) + '%';
+      const elapsed = Math.round((Date.now() - startTime) / 1000);
+      if (crawl < 60) statusEl.textContent = `Loading DOS kernel... — ${elapsed}s elapsed`;
+      else if (crawl < 70) statusEl.textContent = `Starting Windows 95... — ${elapsed}s elapsed`;
+      else if (crawl < 80) statusEl.textContent = `Loading desktop shell... — ${elapsed}s elapsed`;
+      else statusEl.textContent = `Almost there... — ${elapsed}s elapsed`;
+    } else {
+      clearInterval(crawlInterval);
+    }
+  }, 200);
+  // Store interval so screen-set-size can clear it
+  window._crawlInterval = crawlInterval;
 });
 
 let serialLines = '';
@@ -367,16 +385,14 @@ emulator.add_listener('serial0-output-char', (char) => {
 });
 
 emulator.add_listener('screen-set-size-graphical', () => {
-  setLoad(96, 'Windows 95 is rendering...');
+  clearInterval(window._crawlInterval);
+  setLoad(100, 'Entering the void...');
+  const loader = document.getElementById('loader');
+  loader.style.opacity = '0';
   setTimeout(() => {
-    setLoad(100, 'Entering the void...');
-    setTimeout(() => {
-      const loader = document.getElementById('loader');
-      loader.style.opacity = '0';
-      setTimeout(() => loader.style.display = 'none', 800);
-      document.getElementById('status-text').textContent = 'Windows 95 — Booting (~60s)';
-    }, 400);
-  }, 300);
+    loader.style.display = 'none';
+    document.getElementById('status-text').textContent = 'Windows 95 — Running';
+  }, 600);
 });
 
 // MIPS counter
